@@ -287,7 +287,9 @@ function buildPickLegSelection(leg, maxSelections = 1) {
 
 function buildPickCombinationFromLegs(pickLegs, poolName) {
   const legSelections = pickLegs.map((leg) => {
-    const selections = Math.random() < 0.5 ? 1 : 2;
+    const available = leg.filter((h) => h.available && h.status && h.letter);
+    if (available.length < 2) throw new Error('Not enough available horses in pick leg');
+    const selections = Math.floor(Math.random() * (available.length - 1)) + 2;
     return buildPickLegSelection(leg, selections);
   });
 
