@@ -1,0 +1,51 @@
+name: Run k6 manually
+
+on:
+  workflow_dispatch:
+    inputs:
+      ch_local:
+        description: "Base URL, por ejemplo http://host.docker.internal:4000"
+        required: true
+        default: "http://host.docker.internal:4000"
+        type: string
+      launch_token:
+        description: "Launch token"
+        required: true
+        type: string
+      vus:
+        description: "Virtual users"
+        required: true
+        default: "10"
+        type: string
+      iterations:
+        description: "Iterations"
+        required: true
+        default: "100"
+        type: string
+
+jobs:
+  run-k6:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo apt-get update
+          sudo apt-get install -y gnupg ca-certificates
+          curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Run k6 test
+        env:
+          CH_LOCAL: ${{ inputs.ch_local }}
+          LAUNCH_TOKEN: ${{ inputs.launch_token }}
+          VUS: ${{ inputs.vus }}
+          ITERATIONS: ${{ inputs.iterations }}
+        run: |
+          k6 run api-v2.test.js
