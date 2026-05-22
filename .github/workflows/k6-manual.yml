@@ -6,11 +6,12 @@ on:
       ch_local:
         description: "Base URL, por ejemplo http://host.docker.internal:4000"
         required: true
-        default: "http://host.docker.internal:4000"
+        default: "https://api.centerhorses.online"
         type: string
       launch_token:
         description: "Launch token"
         required: true
+        default: "db3309fd-ba86-4d38-a02b-b34f857ead64"
         type: string
       vus:
         description: "Virtual users"
@@ -20,9 +21,12 @@ on:
       iterations:
         description: "Iterations"
         required: true
-        default: "100"
+        default: "80"
         type: string
-
+  schedule:
+    - cron: "0 13-23 * * *"  # 10:00–20:00 Asunción
+    - cron: "0 0,1 * * *"    # 21:00–22:00 Asunción
+    
 jobs:
   run-k6:
     runs-on: ubuntu-latest
