@@ -9,6 +9,7 @@ const LAUNCH_TOKEN = __ENV.LAUNCH_TOKEN;
 
 const SLEEP_BETWEEN = Number(__ENV.SLEEP_BETWEEN || 0.3);
 const SLEEP_ITERATION = Number(__ENV.SLEEP_ITERATION || 1.5);
+const GROUP_SIZE = Number(__ENV.GROUP_SIZE || 3);
 
 const players = new SharedArray("players", () =>
   JSON.parse(open("./players.json")),
@@ -167,20 +168,20 @@ function getValidHorses(horses) {
   );
 }
 
-function getMinBet(pool) {
+function getRandomBetAmount(pool) {
   const raw =
     pool?.limits?.minBet ??
     pool?.limits?.min_bet ??
     pool?.unityCount?.min_count ??
     4;
 
-  const value = Number(raw);
+  let min = Number(raw);
 
-  if (!Number.isFinite(value) || value <= 0) {
-    return 4;
+  if (!Number.isFinite(min) || min <= 0) {
+    min = 4;
   }
 
-  return value;
+  return Math.floor(Math.random() * (101 - min)) + min;
 }
 
 function sumFromMatchGroups(str) {
@@ -212,7 +213,7 @@ function buildCombination(pool, horses) {
     if (letters.length < 2) return null;
     return {
       combination: `${letters[0]}/${letters[1]}/exacta`,
-      amount: getMinBet(pool),
+      amount: getRandomBetAmount(pool),
       unity: 1,
     };
   }
@@ -221,7 +222,7 @@ function buildCombination(pool, horses) {
     if (letters.length < 3) return null;
     return {
       combination: `${letters[0]}/${letters[1]}/${letters[2]}/trifecta`,
-      amount: getMinBet(pool),
+      amount: getRandomBetAmount(pool),
       unity: 1,
     };
   }
@@ -230,14 +231,14 @@ function buildCombination(pool, horses) {
     if (letters.length < 4) return null;
     return {
       combination: `${letters[0]}/${letters[1]}/${letters[2]}/${letters[3]}/superfecta`,
-      amount: getMinBet(pool),
+      amount: getRandomBetAmount(pool),
       unity: 1,
     };
   }
 
   if (name === "win") {
     if (letters.length < 1) return null;
-    const amount = getMinBet(pool);
+    const amount = getRandomBetAmount(pool);
     return {
       combination: `${letters[0]}-${amount}-0/wp`,
       amount,
@@ -246,7 +247,7 @@ function buildCombination(pool, horses) {
 
   if (name === "place") {
     if (letters.length < 1) return null;
-    const amount = getMinBet(pool);
+    const amount = getRandomBetAmount(pool);
     return {
       combination: `${letters[0]}-0-${amount}/wp`,
       amount,
@@ -255,7 +256,7 @@ function buildCombination(pool, horses) {
 
   if (name === "wps") {
     if (letters.length < 1) return null;
-    const amount = getMinBet(pool);
+    const amount = getRandomBetAmount(pool);
     const count = Math.min(2, letters.length);
     const segments = [];
 
@@ -378,7 +379,8 @@ export default function () {
     fail("no races available");
   }
 
-  const chosenRace = pickRandom(races);
+  const groupIndex = Math.floor(exec.scenario.iterationInTest / GROUP_SIZE);
+  const chosenRace = races[groupIndex % races.length];
 
   console.log("race", chosenRace.racecourseRaceId);
 
