@@ -1,17 +1,12 @@
-name: Run k6 manually
+name: Run k6
 
 on:
   workflow_dispatch:
     inputs:
       ch_local:
-        description: "Base URL, por ejemplo http://host.docker.internal:4000"
+        description: "Base URL"
         required: true
         default: "https://api.centerhorses.online"
-        type: string
-      launch_token:
-        description: "Launch token"
-        required: true
-        default: "db3309fd-ba86-4d38-a02b-b34f857ead64"
         type: string
       vus:
         description: "Virtual users"
@@ -23,13 +18,18 @@ on:
         required: true
         default: "80"
         type: string
+
   schedule:
-    - cron: "7 13-23 * * *"  # 10:00–20:00 Asunción
-    - cron: "7 0,1 * * *"    # 21:00–22:00 Asunción
-    
+    - cron: "7 13-23 * * *"
+    - cron: "7 0,1 * * *"
+
 jobs:
   run-k6:
     runs-on: ubuntu-latest
+    env:
+      DEFAULT_CH_LOCAL: "https://api.centerhorses.online"
+      DEFAULT_VUS: "10"
+      DEFAULT_ITERATIONS: "80"
 
     steps:
       - name: Checkout repo
@@ -37,7 +37,6 @@ jobs:
 
       - name: Install k6
         run: |
-          sudo gpg -k
           sudo apt-get update
           sudo apt-get install -y gnupg ca-certificates
           curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
@@ -45,11 +44,34 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y k6
 
-      - name: Run k6 test
-        env:
-          CH_LOCAL: ${{ inputs.ch_local }}
-          LAUNCH_TOKEN: ${{ inputs.launch_token }}
-          VUS: ${{ inputs.vus }}
-          ITERATIONS: ${{ inputs.iterations }}
+      - name: Resolve runtime variables
+        shell: bash
         run: |
-          k6 run api-v2.test.js
+          echo "CH_LOCAL=${{ github.event.inputs.ch_local }}" >> $GITHUB_ENV
+          echo "VUS=${{ github.event.inputs.vus }}" >> $GITHUB_ENV
+          echo "ITERATIONS=${{ github.event.inputs.iterations }}" >> $GITHUB_ENV
+
+          if [ -z "${{ github.event.inputs.ch_local }}" ]; then
+            echo "CH_LOCAL=${DEFAULT_CH_LOCAL}" >> $GITHUB_ENV
+          fi
+
+          if [ -z "${{ github.event.inputs.vus }}" ]; then
+            echo "VUS=${DEFAULT_VUS}" >> $GITHUB_ENV
+          fi
+
+          if [ -z "${{ github.event.inputs.iterations }}" ]; then
+            echo "ITERATIONS=${DEFAULT_ITERATIONS}" >> $GITHUB_ENV
+          fi
+
+          echo "LAUNCH_TOKEN=${{ secrets.LAUNCH_TOKEN }}" >> $GITHUB_ENV
+
+      - name: Validate envs
+        shell: bash
+        run: |
+          test -n "$CH_LOCAL" || (echo "CH_LOCAL is empty" && exit 1)
+          test -n "$VUS" || (echo "VUS is empty" && exit 1)
+          test -n "$ITERATIONS" || (echo "ITERATIONS is empty" && exit 1)
+          test -n "$LAUNCH_TOKEN" || (echo "LAUNCH_TOKEN is empty" && exit 1)
+
+      - name: Run k6
+        run: k6 run api-v2.test.js
